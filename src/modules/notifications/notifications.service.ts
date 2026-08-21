@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { Prisma } from '../../generated/prisma/client';
 import { ROLES } from '../../config/constants';
+import { NotificationsStreamService } from './notifications-stream.service';
 
 const notificationInclude = {
   event: { select: { id: true, code: true, suffix: true } },
@@ -13,7 +14,10 @@ type NotificationWithEvent = Prisma.NotificationGetPayload<{
 
 @Injectable()
 export class NotificationsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly stream: NotificationsStreamService,
+  ) {}
 
   async createMany(
     userIds: string[],
@@ -23,6 +27,11 @@ export class NotificationsService {
     if (!unique.length) return;
     await this.prisma.notification.createMany({
       data: unique.map((userId) => ({ userId, ...data })),
+    });
+    this.stream.emitToUsers(unique, {
+      type: data.type,
+      message: data.message,
+      eventId: data.eventId,
     });
   }
 

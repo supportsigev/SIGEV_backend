@@ -1,10 +1,12 @@
 import {
-  Controller, Get, Patch, Post, Param, Delete, Body, UseGuards,
+  Controller, Get, Patch, Post, Param, Delete, Body, UseGuards, Sse, MessageEvent,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
+import { Observable } from 'rxjs';
 import { IsString, IsNotEmpty, MaxLength } from 'class-validator';
 import { NotificationsService } from './notifications.service';
+import { NotificationsStreamService } from './notifications-stream.service';
 import { CurrentUser } from '../../common/decorators';
 import { RolesGuard } from '../../common/guards';
 import { UserWithRoles } from '../../database/types';
@@ -30,7 +32,18 @@ export class CreateNotificationDto {
 @UseGuards(AuthGuard('jwt'), RolesGuard)
 @Controller('notifications')
 export class NotificationsController {
-  constructor(private readonly notificationsService: NotificationsService) {}
+  constructor(
+    private readonly notificationsService: NotificationsService,
+    private readonly notificationsStreamService: NotificationsStreamService,
+  ) {}
+
+  @Sse('stream')
+  @ApiOperation({
+    summary: 'Stream de notificaciones en tiempo real (Server-Sent Events)',
+  })
+  stream(@CurrentUser() user: UserWithRoles): Observable<MessageEvent> {
+    return this.notificationsStreamService.subscribe(user.id);
+  }
 
   @Post()
   @ApiOperation({ summary: 'Crear notificación para los operadores de la orden' })
