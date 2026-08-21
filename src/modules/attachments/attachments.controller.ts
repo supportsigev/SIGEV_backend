@@ -25,7 +25,9 @@ import { CurrentUser, Roles } from '../../common/decorators';
 import { RolesGuard } from '../../common/guards';
 import { UserWithRoles } from '../../database/types';
 import { ROLES } from '../../config/constants';
-import { ALLOWED_EXTENSIONS } from './attachments-folders';
+import { ALLOWED_EXTENSIONS, VIDEO_EXTENSIONS } from './attachments-folders';
+
+const ABSOLUTE_MAX_FILE_SIZE = 104857600;
 
 @ApiTags('Adjuntos')
 @ApiBearerAuth()
@@ -36,6 +38,15 @@ export class AttachmentsController {
     private readonly attachmentsService: AttachmentsService,
     private readonly configService: ConfigService,
   ) {}
+
+  private getMaxSizeFor(fileName: string): number {
+    const ext = path.extname(fileName).toLowerCase();
+    const isVideo = (VIDEO_EXTENSIONS as readonly string[]).includes(ext);
+    return this.configService.get<number>(
+      isVideo ? 'upload.maxVideoFileSize' : 'upload.maxFileSize',
+      isVideo ? 104857600 : 10485760,
+    );
+  }
 
   @Get('event/:eventId')
   @ApiOperation({ summary: 'Listar adjuntos de un evento' })
@@ -55,7 +66,7 @@ export class AttachmentsController {
   @UseInterceptors(
     FileInterceptor('file', {
       storage: memoryStorage(),
-      limits: { fileSize: 10485760 },
+      limits: { fileSize: ABSOLUTE_MAX_FILE_SIZE },
       fileFilter: (_req, file, cb) => {
         const ext = path.extname(file.originalname).toLowerCase();
         if ((ALLOWED_EXTENSIONS as readonly string[]).includes(ext)) {
@@ -79,14 +90,11 @@ export class AttachmentsController {
     @Req() req: { file: Express.Multer.File },
     @CurrentUser() user: UserWithRoles,
   ) {
-    const maxSize = this.configService.get<number>(
-      'upload.maxFileSize',
-      10485760,
-    );
     const file = req.file;
     if (!file) {
       throw new BadRequestException('Debe adjuntar un archivo');
     }
+    const maxSize = this.getMaxSizeFor(file.originalname);
     if (file.size > maxSize) {
       throw new BadRequestException(
         `El archivo supera el tamaño máximo permitido (${Math.round(maxSize / 1048576)} MB)`,
@@ -111,7 +119,7 @@ export class AttachmentsController {
   @UseInterceptors(
     FileInterceptor('file', {
       storage: memoryStorage(),
-      limits: { fileSize: 10485760 },
+      limits: { fileSize: ABSOLUTE_MAX_FILE_SIZE },
       fileFilter: (_req, file, cb) => {
         const ext = path.extname(file.originalname).toLowerCase();
         if ((ALLOWED_EXTENSIONS as readonly string[]).includes(ext)) {
@@ -134,14 +142,11 @@ export class AttachmentsController {
     @Req() req: { file: Express.Multer.File },
     @CurrentUser() user: UserWithRoles,
   ) {
-    const maxSize = this.configService.get<number>(
-      'upload.maxFileSize',
-      10485760,
-    );
     const file = req.file;
     if (!file) {
       throw new BadRequestException('Debe adjuntar un archivo');
     }
+    const maxSize = this.getMaxSizeFor(file.originalname);
     if (file.size > maxSize) {
       throw new BadRequestException(
         `El archivo supera el tamaño máximo permitido (${Math.round(maxSize / 1048576)} MB)`,

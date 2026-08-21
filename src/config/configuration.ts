@@ -21,6 +21,7 @@ export default () => ({
   upload: {
     dest: process.env.UPLOAD_DEST || './uploads',
     maxFileSize: parseInt(process.env.MAX_FILE_SIZE || '10485760', 10),
+    maxVideoFileSize: parseInt(process.env.MAX_VIDEO_FILE_SIZE || '104857600', 10),
   },
   supabase: {
     url: process.env.SUPABASE_URL || '',

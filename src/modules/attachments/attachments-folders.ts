@@ -28,6 +28,13 @@ export const MULTI_DOCUMENT_FOLDERS = [
   'Cotizaciones presentadas',
 ] as const;
 
+export const VIDEO_EXTENSIONS = [
+  '.mp4',
+  '.mov',
+  '.webm',
+  '.avi',
+] as const;
+
 export const ALLOWED_EXTENSIONS = [
   '.pdf',
   '.jpg',
@@ -37,4 +44,5 @@ export const ALLOWED_EXTENSIONS = [
   '.xls',
   '.doc',
   '.docx',
+  ...VIDEO_EXTENSIONS,
 ] as const;
