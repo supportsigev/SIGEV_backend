@@ -81,10 +81,21 @@ export class MapService {
     if (dto.disbursementId) where.disbursementId = dto.disbursementId;
     if (dto.status) where.status = dto.status;
 
+    // select explícito: incluir items completos de cada evento era puro
+    // desperdicio (nunca se leen) y multiplicaba la transferencia desde la BD.
     const events = await this.prisma.event.findMany({
       where,
-      include: { items: true, ofertaEconomica: true },
-      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        code: true,
+        name: true,
+        status: true,
+        divipolaCode: true,
+        generalAllyId: true,
+        latitude: true,
+        longitude: true,
+        ofertaEconomica: { select: { total: true } },
+      },
     });
 
     const codes = [
@@ -98,6 +109,13 @@ export class MapService {
     const municipalities = codes.length
       ? await this.prisma.municipality.findMany({
           where: { divipolaCode: { in: codes } },
+          select: {
+            divipolaCode: true,
+            name: true,
+            department: true,
+            latitude: true,
+            longitude: true,
+          },
         })
       : [];
 

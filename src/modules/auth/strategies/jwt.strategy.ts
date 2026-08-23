@@ -10,8 +10,19 @@ interface JwtPayload {
   email: string;
 }
 
+// Evita consultar la BD en cada petición autenticada: los roles/estado de un
+// usuario cambian rara vez, así que 60s de TTL es un buen equilibrio entre
+// consumo (créditos de Railway) y revocación casi inmediata de accesos.
+const USER_CACHE_TTL_MS = 60_000;
+const USER_CACHE_MAX_ENTRIES = 500;
+
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
+  private readonly userCache = new Map<
+    string,
+    { user: UserWithRoles; expiresAt: number }
+  >();
+
   constructor(
     configService: ConfigService,
     private readonly prisma: PrismaService,
@@ -29,6 +40,14 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: JwtPayload): Promise<UserWithRoles> {
+    const cached = this.userCache.get(payload.sub);
+    if (cached && cached.expiresAt > Date.now()) {
+      return cached.user;
+    }
+    if (cached) {
+      this.userCache.delete(payload.sub);
+    }
+
     const user = await this.prisma.user.findFirst({
       where: { id: payload.sub, isActive: true },
       include: { roles: true, ally: true },
@@ -38,6 +57,23 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       throw new UnauthorizedException('Usuario no encontrado o inactivo');
     }
 
+    if (this.userCache.size >= USER_CACHE_MAX_ENTRIES) {
+      this.evictExpired();
+    }
+    this.userCache.set(payload.sub, {
+      user,
+      expiresAt: Date.now() + USER_CACHE_TTL_MS,
+    });
+
     return user;
+  }
+
+  private evictExpired(): void {
+    const now = Date.now();
+    for (const [key, entry] of this.userCache) {
+      if (entry.expiresAt <= now) {
+        this.userCache.delete(key);
+      }
+    }
   }
 }

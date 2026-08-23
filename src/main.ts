@@ -1,22 +1,14 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
-import { execSync } from 'child_process';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters';
 
-function applyMigrations() {
-  try {
-    execSync('npx prisma migrate deploy', { stdio: 'inherit' });
-  } catch (error) {
-    console.error('[Migrations] Error al aplicar migraciones:', (error as Error).message);
-    process.exit(1);
-  }
-}
+// Las migraciones se ejecutan una sola vez desde el startCommand de
+// railway.json (`npx prisma migrate deploy && node dist/main`); correrlas
+// aquí también duplicaría el gasto de CPU/memoria en cada arranque.
 
 async function bootstrap() {
-  applyMigrations();
-
   const app = await NestFactory.create(AppModule);
 
   app.setGlobalPrefix('api/v1');
