@@ -20,7 +20,7 @@ export class SupabaseService {
     this.client = createClient(url, serviceRoleKey);
   }
 
-  get storage() {
+  get storage(): SupabaseClient['storage'] {
     return this.client.storage;
   }
 }
