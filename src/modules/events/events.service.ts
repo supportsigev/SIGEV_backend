@@ -303,7 +303,7 @@ export class EventsService {
 
     if (items && hasApprovedQuotation && !isSolicitante) {
       throw new BadRequestException(
-        'La cotización del evento ya fue aprobada; no se pueden añadir ni modificar ítems',
+        'La cotización del evento ya fue aprobada; no se pueden realizar modificaciones.',
       );
     }
 
